@@ -10280,41 +10280,6 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
 
       return result;
     }
-
-    observerEvents() {
-      let listeners = this.flattenedListeners();
-      let result;
-
-      if (false
-      /* DEBUG */
-      ) {
-          counters.observerEventsCalls++;
-        }
-
-      if (listeners !== undefined) {
-        for (let index = 0; index < listeners.length; index++) {
-          let listener = listeners[index]; // REMOVE listeners are placeholders that tell us not to
-          // inherit, so they never match. Only ADD and ONCE can match.
-
-          if ((listener.kind === 0
-          /* ADD */
-          || listener.kind === 1
-          /* ONCE */
-          ) && listener.event.indexOf(':change') !== -1) {
-            if (result === undefined) {
-              // we create this array only after we've found a listener that
-              // matches to avoid allocations when no matches are found.
-              result = [];
-            }
-
-            result.push(listener);
-          }
-        }
-      }
-
-      return result;
-    }
-
   }
 
   _exports.Meta = Meta;
@@ -10823,11 +10788,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     _runloop.backburner.ensureInstance();
   }
 
-  const AFTER_OBSERVERS = ':change';
-
-  function changeEvent(keyName) {
-    return keyName + AFTER_OBSERVERS;
-  }
   /**
   @module @ember/object
   */
@@ -11018,269 +10978,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     false && !(events.length > 0 && events.every(p => typeof p === 'string' && p.length > 0)) && (0, _debug.assert)('on called without valid event names', events.length > 0 && events.every(p => typeof p === 'string' && p.length > 0));
     (0, _utils.setListeners)(func, events);
     return func;
-  }
-
-  const SYNC_DEFAULT = !_environment.ENV._DEFAULT_ASYNC_OBSERVERS;
-  const SYNC_OBSERVERS = new Map();
-  const ASYNC_OBSERVERS = new Map();
-  /**
-  @module @ember/object
-  */
-
-  /**
-    @method addObserver
-    @static
-    @for @ember/object/observers
-    @param obj
-    @param {String} path
-    @param {Object|Function} target
-    @param {Function|String} [method]
-    @public
-  */
-
-  function addObserver(obj, path, target, method, sync = SYNC_DEFAULT) {
-    let eventName = changeEvent(path);
-    addListener(obj, eventName, target, method, false, sync);
-
-    if (true
-    /* EMBER_METAL_TRACKED_PROPERTIES */
-    ) {
-        let meta$$1 = (0, _meta2.peekMeta)(obj);
-
-        if (meta$$1 === null || !(meta$$1.isPrototypeMeta(obj) || meta$$1.isInitializing())) {
-          activateObserver(obj, eventName, sync);
-        }
-      } else {
-      watch(obj, path);
-    }
-  }
-  /**
-    @method removeObserver
-    @static
-    @for @ember/object/observers
-    @param obj
-    @param {String} path
-    @param {Object|Function} target
-    @param {Function|String} [method]
-    @public
-  */
-
-
-  function removeObserver(obj, path, target, method, sync = SYNC_DEFAULT) {
-    let eventName = changeEvent(path);
-
-    if (true
-    /* EMBER_METAL_TRACKED_PROPERTIES */
-    ) {
-        let meta$$1 = (0, _meta2.peekMeta)(obj);
-
-        if (meta$$1 === null || !(meta$$1.isPrototypeMeta(obj) || meta$$1.isInitializing())) {
-          deactivateObserver(obj, eventName, sync);
-        }
-      } else {
-      unwatch(obj, path);
-    }
-
-    removeListener(obj, eventName, target, method);
-  }
-
-  function getOrCreateActiveObserversFor(target, sync) {
-    let observerMap = sync === true ? SYNC_OBSERVERS : ASYNC_OBSERVERS;
-
-    if (!observerMap.has(target)) {
-      observerMap.set(target, new Map());
-    }
-
-    return observerMap.get(target);
-  }
-
-  function activateObserver(target, eventName, sync = false) {
-    let activeObservers = getOrCreateActiveObserversFor(target, sync);
-
-    if (activeObservers.has(eventName)) {
-      activeObservers.get(eventName).count++;
-    } else {
-      let [path] = eventName.split(':');
-      let tag = getChainTagsForKey(target, path);
-      activeObservers.set(eventName, {
-        count: 1,
-        path,
-        tag,
-        lastRevision: tag.value(),
-        suspended: false
-      });
-    }
-  }
-
-  function deactivateObserver(target, eventName, sync = false) {
-    let observerMap = sync === true ? SYNC_OBSERVERS : ASYNC_OBSERVERS;
-    let activeObservers = observerMap.get(target);
-
-    if (activeObservers !== undefined) {
-      let observer = activeObservers.get(eventName);
-      observer.count--;
-
-      if (observer.count === 0) {
-        activeObservers.delete(eventName);
-
-        if (activeObservers.size === 0) {
-          observerMap.delete(target);
-        }
-      }
-    }
-  }
-  /**
-   * Primarily used for cases where we are redefining a class, e.g. mixins/reopen
-   * being applied later. Revalidates all the observers, resetting their tags.
-   *
-   * @private
-   * @param target
-   */
-
-
-  function revalidateObservers(target) {
-    if (ASYNC_OBSERVERS.has(target)) {
-      ASYNC_OBSERVERS.get(target).forEach(observer => {
-        observer.tag = getChainTagsForKey(target, observer.path);
-        observer.lastRevision = observer.tag.value();
-      });
-    }
-
-    if (SYNC_OBSERVERS.has(target)) {
-      SYNC_OBSERVERS.get(target).forEach(observer => {
-        observer.tag = getChainTagsForKey(target, observer.path);
-        observer.lastRevision = observer.tag.value();
-      });
-    }
-  }
-
-  let lastKnownRevision = 0;
-
-  function flushAsyncObservers() {
-    if (lastKnownRevision === _reference.CURRENT_TAG.value()) {
-      return;
-    }
-
-    lastKnownRevision = _reference.CURRENT_TAG.value();
-    ASYNC_OBSERVERS.forEach((activeObservers, target) => {
-      let meta$$1 = (0, _meta2.peekMeta)(target);
-
-      if (meta$$1 && (meta$$1.isSourceDestroying() || meta$$1.isMetaDestroyed())) {
-        ASYNC_OBSERVERS.delete(target);
-        return;
-      }
-
-      activeObservers.forEach((observer, eventName) => {
-        if (!observer.tag.validate(observer.lastRevision)) {
-          (0, _runloop.schedule)('actions', () => {
-            try {
-              sendEvent(target, eventName, [target, observer.path]);
-            } finally {
-              observer.tag = getChainTagsForKey(target, observer.path);
-              observer.lastRevision = observer.tag.value();
-            }
-          });
-        }
-      });
-    });
-  }
-
-  function flushSyncObservers() {
-    // When flushing synchronous observers, we know that something has changed (we
-    // only do this during a notifyPropertyChange), so there's no reason to check
-    // a global revision.
-    SYNC_OBSERVERS.forEach((activeObservers, target) => {
-      let meta$$1 = (0, _meta2.peekMeta)(target);
-
-      if (meta$$1 && (meta$$1.isSourceDestroying() || meta$$1.isMetaDestroyed())) {
-        SYNC_OBSERVERS.delete(target);
-        return;
-      }
-
-      activeObservers.forEach((observer, eventName) => {
-        if (!observer.suspended && !observer.tag.validate(observer.lastRevision)) {
-          try {
-            observer.suspended = true;
-            sendEvent(target, eventName, [target, observer.path]);
-          } finally {
-            observer.suspended = false;
-            observer.tag = getChainTagsForKey(target, observer.path);
-            observer.lastRevision = observer.tag.value();
-          }
-        }
-      });
-    });
-  }
-
-  function setObserverSuspended(target, property, suspended) {
-    let activeObservers = SYNC_OBSERVERS.get(target);
-
-    if (!activeObservers) {
-      return;
-    }
-
-    let observer = activeObservers.get(changeEvent(property));
-
-    if (observer) {
-      observer.suspended = suspended;
-    }
-  }
-  /**
-    ObserverSet is a data structure used to keep track of observers
-    that have been deferred.
-  
-    It ensures that observers are called in the same order that they
-    were initially triggered.
-  
-    It also ensures that observers for any object-key pairs are called
-    only once, even if they were triggered multiple times while
-    deferred. In this case, the order that the observer is called in
-    will depend on the first time the observer was triggered.
-  
-    @private
-    @class ObserverSet
-  */
-
-
-  class ObserverSet {
-    constructor() {
-      this.added = new Map();
-      this.queue = [];
-    }
-
-    add(object, key, event) {
-      let keys = this.added.get(object);
-
-      if (keys === undefined) {
-        keys = new Set();
-        this.added.set(object, keys);
-      }
-
-      if (!keys.has(key)) {
-        this.queue.push(object, key, event);
-        keys.add(key);
-      }
-    }
-
-    flush() {
-      // The queue is saved off to support nested flushes.
-      let queue = this.queue;
-      this.added.clear();
-      this.queue = [];
-
-      for (let i = 0; i < queue.length; i += 3) {
-        let object = queue[i];
-        let key = queue[i + 1];
-        let event = queue[i + 2];
-
-        if (object.isDestroying || object.isDestroyed) {
-          continue;
-        }
-
-        sendEvent(object, event, [object, key]);
-      }
-    }
-
   }
 
   let runInTransaction;
@@ -11475,7 +11172,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
 
   const PROPERTY_DID_CHANGE = (0, _utils.symbol)('PROPERTY_DID_CHANGE');
   _exports.PROPERTY_DID_CHANGE = PROPERTY_DID_CHANGE;
-  const observerSet = new ObserverSet();
   let deferred = 0;
   /**
     This function is called just after an object property has changed.
@@ -11520,12 +11216,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
 
     if (meta$$1 !== null) {
       markObjectAsDirty(obj, keyName, meta$$1);
-    }
-
-    if (true
-    /* EMBER_METAL_TRACKED_PROPERTIES */
-    && deferred <= 0) {
-      flushSyncObservers();
     }
 
     if (PROPERTY_DID_CHANGE in obj) {
@@ -11593,28 +11283,12 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   */
 
 
-  function beginPropertyChanges() {
-    deferred++;
-  }
   /**
     @method endPropertyChanges
     @private
   */
 
 
-  function endPropertyChanges() {
-    deferred--;
-
-    if (deferred <= 0) {
-      if (true
-      /* EMBER_METAL_TRACKED_PROPERTIES */
-      ) {
-          flushSyncObservers();
-        } else {
-        observerSet.flush();
-      }
-    }
-  }
   /**
     Make a series of property changes together in an
     exception-safe way.
@@ -11631,30 +11305,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     @private
   */
 
-
-  function changeProperties(callback) {
-    beginPropertyChanges();
-
-    try {
-      callback();
-    } finally {
-      endPropertyChanges();
-    }
-  }
-
-  function notifyObservers(obj, keyName, meta$$1) {
-    if (meta$$1.isSourceDestroying()) {
-      return;
-    }
-
-    let eventName = changeEvent(keyName);
-
-    if (deferred > 0) {
-      observerSet.add(obj, keyName, eventName);
-    } else {
-      sendEvent(obj, eventName, [obj, keyName]);
-    }
-  }
   /**
   @module @ember/object
   */
@@ -11964,28 +11614,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     }
 
     arrayContentDidChange(array, start, deleteCount, items.length);
-  }
-
-  function arrayObserversHelper(obj, target, opts, operation, notify) {
-    let willChange = opts && opts.willChange || 'arrayWillChange';
-    let didChange = opts && opts.didChange || 'arrayDidChange';
-    let hasObservers = get(obj, 'hasArrayObservers');
-    operation(obj, '@array:before', target, willChange);
-    operation(obj, '@array:change', target, didChange);
-
-    if (hasObservers === notify) {
-      notifyPropertyChange(obj, 'hasArrayObservers');
-    }
-
-    return obj;
-  }
-
-  function addArrayObserver(array, target, opts) {
-    return arrayObserversHelper(array, target, opts, addListener, false);
-  }
-
-  function removeArrayObserver(array, target, opts) {
-    return arrayObserversHelper(array, target, opts, removeListener, true);
   }
 
   function isElementDescriptor(args) {
@@ -22446,13 +22074,6 @@ enifed("@ember/-internals/runtime/lib/mixins/array", ["exports", "@ember/-intern
     new enumerable properties.
   */
 
-
-  function nonEnumerableComputed() {
-    let property = (0, _metal.computed)(...arguments);
-    property.enumerable = false;
-    return property;
-  }
-
   function mapBy(key) {
     return this.map(next => (0, _metal.get)(next, key));
   } // ..........................................................
@@ -22684,60 +22305,6 @@ enifed("@ember/-internals/runtime/lib/mixins/array", ["exports", "@ember/-intern
 
       return -1;
     },
-
-    // ..........................................................
-    // ARRAY OBSERVERS
-    //
-
-    /**
-      Adds an array observer to the receiving array. The array observer object
-      normally must implement two methods:
-       * `willChange(observedObj, start, removeCount, addCount)` - This method will be
-        called just before the array is modified.
-      * `didChange(observedObj, start, removeCount, addCount)` - This method will be
-        called just after the array is modified.
-       Both callbacks will be passed the observed object, starting index of the
-      change as well as a count of the items to be removed and added. You can use
-      these callbacks to optionally inspect the array during the change, clear
-      caches, or do any other bookkeeping necessary.
-       In addition to passing a target, you can also include an options hash
-      which you can use to override the method names that will be invoked on the
-      target.
-       @method addArrayObserver
-      @param {Object} target The observer object.
-      @param {Object} opts Optional hash of configuration options including
-        `willChange` and `didChange` option.
-      @return {EmberArray} receiver
-      @public
-    */
-    addArrayObserver(target, opts) {
-      return (0, _metal.addArrayObserver)(this, target, opts);
-    },
-
-    /**
-      Removes an array observer from the object if the observer is current
-      registered. Calling this method multiple times with the same object will
-      have no effect.
-       @method removeArrayObserver
-      @param {Object} target The object observing the array.
-      @param {Object} opts Optional hash of configuration options including
-        `willChange` and `didChange` option.
-      @return {EmberArray} receiver
-      @public
-    */
-    removeArrayObserver(target, opts) {
-      return (0, _metal.removeArrayObserver)(this, target, opts);
-    },
-
-    /**
-      Becomes true whenever the array currently has observers watching changes
-      on the array.
-       @property {Boolean} hasArrayObservers
-      @public
-    */
-    hasArrayObservers: nonEnumerableComputed(function () {
-      return (0, _metal.hasListeners)(this, '@array:change') || (0, _metal.hasListeners)(this, '@array:before');
-    }),
 
     /**
       If you are implementing an object that supports `EmberArray`, call this
@@ -32918,27 +32485,7 @@ enifed("@ember/runloop/index", ["exports", "@ember/debug", "@ember/-internals/er
 
   function onEnd(current, next) {
     currentRunLoop = next;
-
-    if (true
-    /* EMBER_METAL_TRACKED_PROPERTIES */
-    ) {
-        (0, _metal.flushAsyncObservers)();
-      }
   }
-
-  let flush;
-
-  if (true
-  /* EMBER_METAL_TRACKED_PROPERTIES */
-  ) {
-      flush = function (queueName, next) {
-        if (queueName === 'render' || queueName === _rsvpErrorQueue) {
-          (0, _metal.flushAsyncObservers)();
-        }
-
-        next();
-      };
-    }
 
   const _rsvpErrorQueue = ("" + Math.random() + Date.now()).replace('.', '');
   /**
