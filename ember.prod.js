@@ -13149,11 +13149,8 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
 
       this._parent = undefined;
       this._descriptors = undefined;
-      this._watching = undefined;
       this._mixins = undefined;
       this._deps = undefined;
-      this._chainWatchers = undefined;
-      this._chains = undefined;
       this._tag = undefined;
       this._tags = undefined; // initial value for all flags right now is false
       // see FLAGS const for detailed list of flags used
@@ -13206,12 +13203,6 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
       }
 
       this.setMetaDestroyed(); // remove chainWatchers to remove circular references that would prevent GC
-
-      let chains = this.readableChains();
-
-      if (chains !== undefined) {
-        chains.destroy();
-      }
     }
 
     isSourceDestroying() {
@@ -13458,60 +13449,6 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
       if (lazyChains !== undefined) {
         return lazyChains[key];
       }
-    }
-
-    writableChainWatchers(create) {
-      false && !!this.isMetaDestroyed() && (0, _debug.assert)(this.isMetaDestroyed() ? "Cannot create a new chain watcher for `" + (0, _utils.toString)(this.source) + "` after it has been destroyed." : '', !this.isMetaDestroyed());
-      let ret = this._chainWatchers;
-
-      if (ret === undefined) {
-        ret = this._chainWatchers = create(this.source);
-      }
-
-      return ret;
-    }
-
-    readableChainWatchers() {
-      return this._chainWatchers;
-    }
-
-    writableChains(create) {
-      false && !!this.isMetaDestroyed() && (0, _debug.assert)(this.isMetaDestroyed() ? "Cannot create a new chains for `" + (0, _utils.toString)(this.source) + "` after it has been destroyed." : '', !this.isMetaDestroyed());
-      let {
-        _chains: ret
-      } = this;
-
-      if (ret === undefined) {
-        this._chains = ret = create(this.source);
-        let {
-          parent
-        } = this;
-
-        if (parent !== null) {
-          let parentChains = parent.writableChains(create);
-          parentChains.copyTo(ret);
-        }
-      }
-
-      return ret;
-    }
-
-    readableChains() {
-      return this._findInherited1('_chains');
-    }
-
-    writeWatching(subkey, value) {
-      false && !!this.isMetaDestroyed() && (0, _debug.assert)(this.isMetaDestroyed() ? "Cannot update watchers for `" + subkey + "` on `" + (0, _utils.toString)(this.source) + "` after it has been destroyed." : '', !this.isMetaDestroyed());
-
-      let map = this._getOrCreateOwnMap('_watching');
-
-      map[subkey] = value;
-    }
-
-    peekWatching(subkey) {
-      let count = this._findInherited2('_watching', subkey);
-
-      return count === undefined ? 0 : count;
     }
 
     addMixin(mixin) {
@@ -14049,9 +13986,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   _exports.removeArrayObserver = removeArrayObserver;
   _exports.arrayContentWillChange = arrayContentWillChange;
   _exports.arrayContentDidChange = arrayContentDidChange;
-  _exports.eachProxyFor = eachProxyFor;
-  _exports.eachProxyArrayWillChange = eachProxyArrayWillChange;
-  _exports.eachProxyArrayDidChange = eachProxyArrayDidChange;
   _exports.addListener = addListener;
   _exports.hasListeners = hasListeners;
   _exports.on = on;
@@ -14065,7 +13999,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   _exports.changeProperties = changeProperties;
   _exports.endPropertyChanges = endPropertyChanges;
   _exports.notifyPropertyChange = notifyPropertyChange;
-  _exports.overrideChains = overrideChains;
   _exports.defineProperty = defineProperty;
   _exports.isElementDescriptor = isElementDescriptor;
   _exports.nativeDescDecorator = nativeDescDecorator;
@@ -14073,16 +14006,7 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   _exports.descriptorForProperty = descriptorForProperty;
   _exports.isClassicDecorator = isClassicDecorator;
   _exports.setClassicDecorator = setClassicDecorator;
-  _exports.watchKey = watchKey;
-  _exports.unwatchKey = unwatchKey;
-  _exports.finishChains = finishChains;
-  _exports.removeChainWatcher = removeChainWatcher;
   _exports.getChainTagsForKey = getChainTagsForKey;
-  _exports.watchPath = watchPath;
-  _exports.unwatchPath = unwatchPath;
-  _exports.isWatching = isWatching;
-  _exports.unwatch = unwatch;
-  _exports.watch = watch;
   _exports.watcherCount = watcherCount;
   _exports.getProperties = getProperties;
   _exports.setProperties = setProperties;
@@ -14110,7 +14034,7 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   _exports.removeNamespace = removeNamespace;
   _exports.isNamespaceSearchDisabled = isSearchDisabled;
   _exports.setNamespaceSearchDisabled = setSearchDisabled;
-  _exports.NAMESPACES_BY_ID = _exports.NAMESPACES = _exports.Tracker = _exports.assertNotRendered = _exports.didRender = _exports.runInTransaction = _exports.update = _exports.UNKNOWN_PROPERTY_TAG = _exports.DEBUG_INJECTION_FUNCTIONS = _exports.aliasMethod = _exports.Mixin = _exports.Libraries = _exports.libraries = _exports.ChainNode = _exports.PROPERTY_DID_CHANGE = _exports.PROXY_CONTENT = _exports.ComputedProperty = _exports._globalsComputed = void 0;
+  _exports.NAMESPACES_BY_ID = _exports.NAMESPACES = _exports.Tracker = _exports.assertNotRendered = _exports.didRender = _exports.runInTransaction = _exports.update = _exports.UNKNOWN_PROPERTY_TAG = _exports.DEBUG_INJECTION_FUNCTIONS = _exports.aliasMethod = _exports.Mixin = _exports.Libraries = _exports.libraries = _exports.PROPERTY_DID_CHANGE = _exports.PROXY_CONTENT = _exports.ComputedProperty = _exports._globalsComputed = void 0;
   const COMPUTED_PROPERTY_CACHED_VALUES = new WeakMap();
   const COMPUTED_PROPERTY_LAST_REVISION = true
   /* EMBER_METAL_TRACKED_PROPERTIES */
@@ -15120,21 +15044,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     });
   }
 
-  function chainsDidChange(_obj, keyName, meta$$1) {
-    let chainWatchers = meta$$1.readableChainWatchers();
-
-    if (chainWatchers !== undefined) {
-      chainWatchers.notify(keyName, true, notifyPropertyChange);
-    }
-  }
-
-  function overrideChains(_obj, keyName, meta$$1) {
-    let chainWatchers = meta$$1.readableChainWatchers();
-
-    if (chainWatchers !== undefined) {
-      chainWatchers.revalidate(keyName);
-    }
-  }
   /**
     @method beginPropertyChanges
     @chainable
@@ -15316,7 +15225,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
       meta$$1 = (0, _meta2.meta)(obj);
     }
 
-    let watching = meta$$1.peekWatching(keyName) > 0;
     let previousDesc = descriptorForProperty(obj, keyName, meta$$1);
     let wasDescriptor = previousDesc !== undefined;
 
@@ -15391,168 +15299,8 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     // were initialized with the prototype
 
 
-    if (watching) {
-      overrideChains(obj, keyName, meta$$1);
-    } // The `value` passed to the `didDefineProperty` hook is
-    // either the descriptor or data, whichever was passed.
-
-
     if (typeof obj.didDefineProperty === 'function') {
       obj.didDefineProperty(obj, keyName, value);
-    }
-  }
-
-  let handleMandatorySetter;
-
-  function watchKey(obj, keyName, _meta) {
-    let meta$$1 = _meta === undefined ? (0, _meta2.meta)(obj) : _meta;
-    let count = meta$$1.peekWatching(keyName);
-    meta$$1.writeWatching(keyName, count + 1);
-
-    if (count === 0) {
-      // activate watching first time
-      let possibleDesc = descriptorForProperty(obj, keyName, meta$$1);
-
-      if (possibleDesc !== undefined && possibleDesc.willWatch !== undefined) {
-        possibleDesc.willWatch(obj, keyName, meta$$1);
-      }
-
-      if (!true
-      /* EMBER_METAL_TRACKED_PROPERTIES */
-      ) {
-          if (typeof obj.willWatchProperty === 'function') {
-            obj.willWatchProperty(keyName);
-          }
-        }
-
-      if (false
-      /* DEBUG */
-      ) {
-          // NOTE: this is dropped for prod + minified builds
-          handleMandatorySetter(meta$$1, obj, keyName);
-        }
-    }
-  }
-
-  if (false
-  /* DEBUG */
-  ) {
-      let hasOwnProperty = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-
-      let propertyIsEnumerable = (obj, key) => Object.prototype.propertyIsEnumerable.call(obj, key); // Future traveler, although this code looks scary. It merely exists in
-      // development to aid in development asertions. Production builds of
-      // ember strip this entire block out
-
-
-      handleMandatorySetter = function handleMandatorySetter(m, obj, keyName) {
-        let descriptor = (0, _utils.lookupDescriptor)(obj, keyName);
-        let hasDescriptor = descriptor !== null;
-        let possibleDesc = hasDescriptor && descriptor.value;
-
-        if (isClassicDecorator(possibleDesc)) {
-          return;
-        }
-
-        let configurable = hasDescriptor ? descriptor.configurable : true;
-        let isWritable = hasDescriptor ? descriptor.writable : true;
-        let hasValue = hasDescriptor ? 'value' in descriptor : true; // this x in Y deopts, so keeping it in this function is better;
-
-        if (configurable && isWritable && hasValue && keyName in obj) {
-          let desc = {
-            configurable: true,
-            set: MANDATORY_SETTER_FUNCTION(keyName),
-            enumerable: propertyIsEnumerable(obj, keyName),
-            get: undefined
-          };
-
-          if (hasOwnProperty(obj, keyName)) {
-            m.writeValues(keyName, obj[keyName]);
-            desc.get = DEFAULT_GETTER_FUNCTION(keyName);
-          } else {
-            desc.get = INHERITING_GETTER_FUNCTION(keyName);
-          }
-
-          Object.defineProperty(obj, keyName, desc);
-        }
-      };
-    }
-
-  function unwatchKey(obj, keyName, _meta) {
-    let meta$$1 = _meta === undefined ? (0, _meta2.peekMeta)(obj) : _meta; // do nothing of this object has already been destroyed
-
-    if (meta$$1 === null || meta$$1.isSourceDestroyed()) {
-      return;
-    }
-
-    let count = meta$$1.peekWatching(keyName);
-
-    if (count === 1) {
-      meta$$1.writeWatching(keyName, 0);
-      let possibleDesc = descriptorForProperty(obj, keyName, meta$$1);
-      let isDescriptor = possibleDesc !== undefined;
-
-      if (isDescriptor && possibleDesc.didUnwatch !== undefined) {
-        possibleDesc.didUnwatch(obj, keyName, meta$$1);
-      }
-
-      if (typeof obj.didUnwatchProperty === 'function') {
-        obj.didUnwatchProperty(keyName);
-      }
-
-      if (false
-      /* DEBUG */
-      ) {
-          // It is true, the following code looks quite WAT. But have no fear, It
-          // exists purely to improve development ergonomics and is removed from
-          // ember.min.js and ember.prod.js builds.
-          //
-          // Some further context: Once a property is watched by ember, bypassing `set`
-          // for mutation, will bypass observation. This code exists to assert when
-          // that occurs, and attempt to provide more helpful feedback. The alternative
-          // is tricky to debug partially observable properties.
-          if (!isDescriptor && keyName in obj) {
-            let maybeMandatoryDescriptor = (0, _utils.lookupDescriptor)(obj, keyName);
-
-            if (maybeMandatoryDescriptor && maybeMandatoryDescriptor.set && maybeMandatoryDescriptor.set.isMandatorySetter) {
-              if (maybeMandatoryDescriptor.get && maybeMandatoryDescriptor.get.isInheritingGetter) {
-                let possibleValue = meta$$1.readInheritedValue(keyName);
-
-                if (possibleValue === undefined) {
-                  delete obj[keyName];
-                  return;
-                }
-              }
-
-              Object.defineProperty(obj, keyName, {
-                configurable: true,
-                enumerable: Object.prototype.propertyIsEnumerable.call(obj, keyName),
-                writable: true,
-                value: meta$$1.peekValues(keyName)
-              });
-              meta$$1.deleteFromValues(keyName);
-            }
-          }
-        }
-    } else if (count > 1) {
-      meta$$1.writeWatching(keyName, count - 1);
-    }
-  }
-
-  const EACH_PROXIES = new WeakMap();
-
-  function eachProxyArrayWillChange(array, idx, removedCnt, addedCnt) {
-    let eachProxy = EACH_PROXIES.get(array);
-
-    if (eachProxy !== undefined) {
-      eachProxy.arrayWillChange(array, idx, removedCnt, addedCnt);
-    }
-  }
-
-  function eachProxyArrayDidChange(array, idx, removedCnt, addedCnt) {
-    let eachProxy = EACH_PROXIES.get(array);
-
-    if (eachProxy !== undefined) {
-      eachProxy.arrayDidChange(array, idx, removedCnt, addedCnt);
     }
   }
 
@@ -15698,592 +15446,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
     return arrayObserversHelper(array, target, opts, removeListener, true);
   }
 
-  function eachProxyFor(array) {
-    let eachProxy = EACH_PROXIES.get(array);
-
-    if (eachProxy === undefined) {
-      eachProxy = new EachProxy(array);
-      EACH_PROXIES.set(array, eachProxy);
-    }
-
-    return eachProxy;
-  }
-
-  class EachProxy {
-    constructor(content) {
-      this._content = content;
-      this._keys = undefined;
-      (0, _meta2.meta)(this);
-    } // ..........................................................
-    // ARRAY CHANGES
-    // Invokes whenever the content array itself changes.
-
-
-    arrayWillChange(content, idx, removedCnt
-    /*, addedCnt */
-    ) {
-      // eslint-disable-line no-unused-vars
-      let keys = this._keys;
-
-      if (!keys) {
-        return;
-      }
-
-      let lim = removedCnt > 0 ? idx + removedCnt : -1;
-
-      if (lim > 0) {
-        for (let key in keys) {
-          removeObserverForContentKey(content, key, this, idx, lim);
-        }
-      }
-    }
-
-    arrayDidChange(content, idx, _removedCnt, addedCnt) {
-      let keys = this._keys;
-
-      if (!keys) {
-        return;
-      }
-
-      let lim = addedCnt > 0 ? idx + addedCnt : -1;
-      let meta$$1 = (0, _meta2.peekMeta)(this);
-
-      for (let key in keys) {
-        if (lim > 0) {
-          addObserverForContentKey(content, key, this, idx, lim);
-        }
-
-        notifyPropertyChange(this, key, meta$$1);
-      }
-    } // ..........................................................
-    // LISTEN FOR NEW OBSERVERS AND OTHER EVENT LISTENERS
-    // Start monitoring keys based on who is listening...
-
-
-    willWatchProperty(property) {
-      this.beginObservingContentKey(property);
-    }
-
-    didUnwatchProperty(property) {
-      this.stopObservingContentKey(property);
-    } // ..........................................................
-    // CONTENT KEY OBSERVING
-    // Actual watch keys on the source content.
-
-
-    beginObservingContentKey(keyName) {
-      let keys = this._keys;
-
-      if (keys === undefined) {
-        keys = this._keys = Object.create(null);
-      }
-
-      if (!keys[keyName]) {
-        keys[keyName] = 1;
-        let content = this._content;
-        let len = content.length;
-        addObserverForContentKey(content, keyName, this, 0, len);
-      } else {
-        keys[keyName]++;
-      }
-    }
-
-    stopObservingContentKey(keyName) {
-      let keys = this._keys;
-
-      if (keys !== undefined && keys[keyName] > 0 && --keys[keyName] <= 0) {
-        let content = this._content;
-        let len = content.length;
-        removeObserverForContentKey(content, keyName, this, 0, len);
-      }
-    }
-
-    contentKeyDidChange(_obj, keyName) {
-      notifyPropertyChange(this, keyName);
-    }
-
-  }
-
-  function addObserverForContentKey(content, keyName, proxy, idx, loc) {
-    while (--loc >= idx) {
-      let item = objectAt(content, loc);
-
-      if (item) {
-        false && !(typeof item === 'object') && (0, _debug.assert)("When using @each to observe the array `" + content.toString() + "`, the array must return an object", typeof item === 'object');
-        addObserver(item, keyName, proxy, 'contentKeyDidChange');
-      }
-    }
-  }
-
-  function removeObserverForContentKey(content, keyName, proxy, idx, loc) {
-    while (--loc >= idx) {
-      let item = objectAt(content, loc);
-
-      if (item) {
-        removeObserver(item, keyName, proxy, 'contentKeyDidChange');
-      }
-    }
-  }
-
-  function isObject(obj) {
-    return typeof obj === 'object' && obj !== null;
-  }
-
-  function isVolatile(obj, keyName, meta$$1) {
-    let desc = descriptorForProperty(obj, keyName, meta$$1);
-    return !(desc !== undefined && desc._volatile === false);
-  }
-
-  class ChainWatchers {
-    constructor() {
-      // chain nodes that reference a key in this obj by key
-      // we only create ChainWatchers when we are going to add them
-      // so create this upfront
-      this.chains = Object.create(null);
-    }
-
-    add(key, node) {
-      let nodes = this.chains[key];
-
-      if (nodes === undefined) {
-        this.chains[key] = [node];
-      } else {
-        nodes.push(node);
-      }
-    }
-
-    remove(key, node) {
-      let nodes = this.chains[key];
-
-      if (nodes !== undefined) {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i] === node) {
-            nodes.splice(i, 1);
-            break;
-          }
-        }
-      }
-    }
-
-    has(key, node) {
-      let nodes = this.chains[key];
-
-      if (nodes !== undefined) {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i] === node) {
-            return true;
-          }
-        }
-      }
-
-      return false;
-    }
-
-    revalidateAll() {
-      for (let key in this.chains) {
-        this.notify(key, true, undefined);
-      }
-    }
-
-    revalidate(key) {
-      this.notify(key, true, undefined);
-    } // key: the string key that is part of a path changed
-    // revalidate: boolean; the chains that are watching this value should revalidate
-    // callback: function that will be called with the object and path that
-    //           will be/are invalidated by this key change, depending on
-    //           whether the revalidate flag is passed
-
-
-    notify(key, revalidate, callback) {
-      let nodes = this.chains[key];
-
-      if (nodes === undefined || nodes.length === 0) {
-        return;
-      }
-
-      let affected = undefined;
-
-      if (callback !== undefined) {
-        affected = [];
-      }
-
-      for (let i = 0; i < nodes.length; i++) {
-        nodes[i].notify(revalidate, affected);
-      }
-
-      if (callback === undefined) {
-        return;
-      } // we gather callbacks so we don't notify them during revalidation
-
-
-      for (let i = 0; i < affected.length; i += 2) {
-        let obj = affected[i];
-        let path = affected[i + 1];
-        callback(obj, path);
-      }
-    }
-
-  }
-
-  function makeChainWatcher() {
-    return new ChainWatchers();
-  }
-
-  function makeChainNode(obj) {
-    return new ChainNode(null, null, obj);
-  }
-
-  function addChainWatcher(obj, keyName, node) {
-    let m = (0, _meta2.meta)(obj);
-    m.writableChainWatchers(makeChainWatcher).add(keyName, node);
-    watchKey(obj, keyName, m);
-  }
-
-  function removeChainWatcher(obj, keyName, node, _meta) {
-    if (!isObject(obj)) {
-      return;
-    }
-
-    let meta$$1 = _meta === undefined ? (0, _meta2.peekMeta)(obj) : _meta;
-
-    if (meta$$1 === null || meta$$1.isSourceDestroying() || meta$$1.isMetaDestroyed() || meta$$1.readableChainWatchers() === undefined) {
-      return;
-    } // make meta writable
-
-
-    meta$$1 = (0, _meta2.meta)(obj);
-    meta$$1.readableChainWatchers().remove(keyName, node);
-    unwatchKey(obj, keyName, meta$$1);
-  }
-
-  const NODE_STACK = [];
-
-  function destroyRoot(root) {
-    pushChildren(root);
-
-    while (NODE_STACK.length > 0) {
-      let node = NODE_STACK.pop();
-      pushChildren(node);
-      destroyOne(node);
-    }
-  }
-
-  function destroyOne(node) {
-    if (node.isWatching) {
-      removeChainWatcher(node.object, node.key, node);
-      node.isWatching = false;
-    }
-  }
-
-  function pushChildren(node) {
-    let nodes = node.chains;
-
-    if (nodes !== undefined) {
-      for (let key in nodes) {
-        if (nodes[key] !== undefined) {
-          NODE_STACK.push(nodes[key]);
-        }
-      }
-    }
-  } // A ChainNode watches a single key on an object. If you provide a starting
-  // value for the key then the node won't actually watch it. For a root node
-  // pass null for parent and key and object for value.
-
-
-  class ChainNode {
-    constructor(parent, key, value) {
-      this.paths = undefined;
-      this.isWatching = false;
-      this.chains = undefined;
-      this.object = undefined;
-      this.count = 0;
-      this.parent = parent;
-      this.key = key;
-      this.content = value; // It is false for the root of a chain (because we have no parent)
-
-      let isWatching = this.isWatching = parent !== null;
-
-      if (isWatching) {
-        let parentValue = parent.value();
-
-        if (isObject(parentValue)) {
-          this.object = parentValue;
-          addChainWatcher(parentValue, key, this);
-        }
-      }
-    }
-
-    value() {
-      if (this.content === undefined && this.isWatching) {
-        let obj = this.parent.value();
-        this.content = lazyGet(obj, this.key);
-      }
-
-      return this.content;
-    }
-
-    destroy() {
-      // check if root
-      if (this.parent === null) {
-        destroyRoot(this);
-      } else {
-        destroyOne(this);
-      }
-    } // copies a top level object only
-
-
-    copyTo(target) {
-      let paths = this.paths;
-
-      if (paths !== undefined) {
-        let path;
-
-        for (path in paths) {
-          if (paths[path] > 0) {
-            target.add(path);
-          }
-        }
-      }
-    } // called on the root node of a chain to setup watchers on the specified
-    // path.
-
-
-    add(path) {
-      let paths = this.paths || (this.paths = {});
-      paths[path] = (paths[path] || 0) + 1;
-      let tails = path.split('.');
-      this.chain(tails.shift(), tails);
-    } // called on the root node of a chain to teardown watcher on the specified
-    // path
-
-
-    remove(path) {
-      let paths = this.paths;
-
-      if (paths === undefined) {
-        return;
-      }
-
-      if (paths[path] > 0) {
-        paths[path]--;
-      }
-
-      let tails = path.split('.');
-      this.unchain(tails.shift(), tails);
-    }
-
-    chain(key, tails) {
-      let chains = this.chains;
-
-      if (chains === undefined) {
-        chains = this.chains = Object.create(null);
-      }
-
-      let node = chains[key];
-
-      if (node === undefined) {
-        node = chains[key] = new ChainNode(this, key, undefined);
-      }
-
-      node.count++; // count chains...
-      // chain rest of path if there is one
-
-      if (tails.length > 0) {
-        node.chain(tails.shift(), tails);
-      }
-    }
-
-    unchain(key, tails) {
-      let chains = this.chains;
-      let node = chains[key]; // unchain rest of path first...
-
-      if (tails.length > 0) {
-        node.unchain(tails.shift(), tails);
-      } // delete node if needed.
-
-
-      node.count--;
-
-      if (node.count <= 0) {
-        chains[node.key] = undefined;
-        node.destroy();
-      }
-    }
-
-    notify(revalidate, affected) {
-      if (revalidate && this.isWatching) {
-        let parentValue = this.parent.value();
-
-        if (parentValue !== this.object) {
-          removeChainWatcher(this.object, this.key, this);
-
-          if (isObject(parentValue)) {
-            this.object = parentValue;
-            addChainWatcher(parentValue, this.key, this);
-          } else {
-            this.object = undefined;
-          }
-        }
-
-        this.content = undefined;
-      } // then notify chains...
-
-
-      let chains = this.chains;
-
-      if (chains !== undefined) {
-        let node;
-
-        for (let key in chains) {
-          node = chains[key];
-
-          if (node !== undefined) {
-            node.notify(revalidate, affected);
-          }
-        }
-      }
-
-      if (affected !== undefined && this.parent !== null) {
-        this.parent.populateAffected(this.key, 1, affected);
-      }
-    }
-
-    populateAffected(path, depth, affected) {
-      if (this.key) {
-        path = this.key + "." + path;
-      }
-
-      if (this.parent !== null) {
-        this.parent.populateAffected(path, depth + 1, affected);
-      } else if (depth > 1) {
-        affected.push(this.value(), path);
-      }
-    }
-
-  }
-
-  _exports.ChainNode = ChainNode;
-
-  function lazyGet(obj, key) {
-    if (!isObject(obj)) {
-      return;
-    }
-
-    let meta$$1 = (0, _meta2.peekMeta)(obj); // check if object meant only to be a prototype
-
-    if (meta$$1 !== null && meta$$1.proto === obj) {
-      return;
-    } // Use `get` if the return value is an EachProxy or an uncacheable value.
-
-
-    if (key === '@each') {
-      return eachProxyFor(obj);
-    } else if (isVolatile(obj, key, meta$$1)) {
-      return get(obj, key); // Otherwise attempt to get the cached value of the computed property
-    } else {
-      return getCachedValueFor(obj, key);
-    }
-  }
-
-  function finishChains(meta$$1) {
-    // finish any current chains node watchers that reference obj
-    let chainWatchers = meta$$1.readableChainWatchers();
-
-    if (chainWatchers !== undefined) {
-      chainWatchers.revalidateAll();
-    } // ensure that if we have inherited any chains they have been
-    // copied onto our own meta.
-
-
-    if (meta$$1.readableChains() !== undefined) {
-      meta$$1.writableChains(makeChainNode);
-    }
-  }
-
-  function watchPath(obj, keyPath, meta$$1) {
-    let m = meta$$1 === undefined ? (0, _meta2.meta)(obj) : meta$$1;
-    let counter = m.peekWatching(keyPath);
-    m.writeWatching(keyPath, counter + 1);
-
-    if (counter === 0) {
-      // activate watching first time
-      m.writableChains(makeChainNode).add(keyPath);
-    }
-  }
-
-  function unwatchPath(obj, keyPath, meta$$1) {
-    let m = meta$$1 === undefined ? (0, _meta2.peekMeta)(obj) : meta$$1;
-
-    if (m === null) {
-      return;
-    }
-
-    let counter = m.peekWatching(keyPath);
-
-    if (counter > 0) {
-      m.writeWatching(keyPath, counter - 1);
-
-      if (counter === 1) {
-        m.writableChains(makeChainNode).remove(keyPath);
-      }
-    }
-  }
-  /**
-  @module ember
-  */
-
-  /**
-    Starts watching a property on an object. Whenever the property changes,
-    invokes `Ember.notifyPropertyChange`. This is the primitive used by observers
-    and dependent keys; usually you will never call this method directly but instead
-    use higher level methods like `addObserver()`.
-  
-    @private
-    @method watch
-    @for Ember
-    @param obj
-    @param {String} keyPath
-    @param {Object} meta
-  */
-
-
-  function watch(obj, keyPath, meta$$1) {
-    if (isPath(keyPath)) {
-      watchPath(obj, keyPath, meta$$1);
-    } else {
-      watchKey(obj, keyPath, meta$$1);
-    }
-  }
-
-  function isWatching(obj, key) {
-    return watcherCount(obj, key) > 0;
-  }
-
-  function watcherCount(obj, key) {
-    let meta$$1 = (0, _meta2.peekMeta)(obj);
-    return meta$$1 !== null && meta$$1.peekWatching(key) || 0;
-  }
-  /**
-    Stops watching a property on an object. Usually you will never call this method directly but instead
-    use higher level methods like `removeObserver()`.
-  
-    @private
-    @method unwatch
-    @for Ember
-    @param obj
-    @param {String} keyPath
-    @param {Object} meta
-  */
-
-
-  function unwatch(obj, keyPath, meta$$1) {
-    if (isPath(keyPath)) {
-      unwatchPath(obj, keyPath, meta$$1);
-    } else {
-      unwatchKey(obj, keyPath, meta$$1);
-    }
-  }
-
   function isElementDescriptor(args) {
     let [maybeTarget, maybeKey, maybeDesc] = args;
     return (// Ensure we have the right number of args
@@ -16296,43 +15458,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   } // ..........................................................
   // DEPENDENT KEYS
   //
-
-
-  function addDependentKeys(desc, obj, keyName, meta$$1) {
-    // the descriptor has a list of dependent keys, so
-    // add all of its dependent keys.
-    let depKeys = desc._dependentKeys;
-
-    if (depKeys === null || depKeys === undefined) {
-      return;
-    }
-
-    for (let idx = 0; idx < depKeys.length; idx++) {
-      let depKey = depKeys[idx]; // Increment the number of times depKey depends on keyName.
-
-      meta$$1.writeDeps(depKey, keyName, meta$$1.peekDeps(depKey, keyName) + 1); // Watch the depKey
-
-      watch(obj, depKey, meta$$1);
-    }
-  }
-
-  function removeDependentKeys(desc, obj, keyName, meta$$1) {
-    // the descriptor has a list of dependent keys, so
-    // remove all of its dependent keys.
-    let depKeys = desc._dependentKeys;
-
-    if (depKeys === null || depKeys === undefined) {
-      return;
-    }
-
-    for (let idx = 0; idx < depKeys.length; idx++) {
-      let depKey = depKeys[idx]; // Decrement the number of times depKey depends on keyName.
-
-      meta$$1.writeDeps(depKey, keyName, meta$$1.peekDeps(depKey, keyName) - 1); // Unwatch the depKey
-
-      unwatch(obj, depKey, meta$$1);
-    }
-  }
 
   function nativeDescDecorator(propertyDesc) {
     let decorator = function () {
@@ -17828,14 +16953,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
       super.teardown(obj, keyName, meta$$1);
     }
 
-    willWatch(obj, keyName, meta$$1) {
-      if (!true
-      /* EMBER_METAL_TRACKED_PROPERTIES */
-      ) {
-          this.consume(obj, keyName, meta$$1);
-        }
-    }
-
     get(obj, keyName) {
       let ret;
 
@@ -17859,27 +16976,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
       }
 
       return ret;
-    }
-
-    unconsume(obj, keyName, meta$$1) {
-      let wasConsumed = getCachedValueFor(obj, keyName) === CONSUMED;
-
-      if (wasConsumed || meta$$1.peekWatching(keyName) > 0) {
-        removeDependentKeys(this, obj, keyName, meta$$1);
-      }
-
-      if (wasConsumed) {
-        getCacheFor(obj).delete(keyName);
-      }
-    }
-
-    consume(obj, keyName, meta$$1) {
-      let cache = getCacheFor(obj);
-
-      if (cache.get(keyName) !== CONSUMED) {
-        cache.set(keyName, CONSUMED);
-        addDependentKeys(this, obj, keyName, meta$$1);
-      }
     }
 
     set(obj, _keyName, value) {
@@ -27176,24 +26272,6 @@ enifed("@ember/-internals/runtime/lib/mixins/-proxy", ["exports", "@glimmer/refe
     isTruthy: (0, _metal.computed)('content', function () {
       return Boolean((0, _metal.get)(this, 'content'));
     }),
-
-    willWatchProperty(key) {
-      if (!true
-      /* EMBER_METAL_TRACKED_PROPERTIES */
-      ) {
-          let contentKey = "content." + key;
-          (0, _metal.addObserver)(this, contentKey, null, '_contentPropertyDidChange');
-        }
-    },
-
-    didUnwatchProperty(key) {
-      if (!true
-      /* EMBER_METAL_TRACKED_PROPERTIES */
-      ) {
-          let contentKey = "content." + key;
-          (0, _metal.removeObserver)(this, contentKey, null, '_contentPropertyDidChange');
-        }
-    },
 
     _contentPropertyDidChange(content, contentKey) {
       let key = contentKey.slice(8); // remove "content."
@@ -56002,7 +55080,6 @@ enifed("ember/index", ["exports", "require", "@ember/-internals/environment", "n
   Ember.isBlank = metal.isBlank;
   Ember.isPresent = metal.isPresent;
   Ember.notifyPropertyChange = metal.notifyPropertyChange;
-  Ember.overrideChains = metal.overrideChains;
   Ember.beginPropertyChanges = metal.beginPropertyChanges;
   Ember.endPropertyChanges = metal.endPropertyChanges;
   Ember.changeProperties = metal.changeProperties;
@@ -56011,16 +55088,6 @@ enifed("ember/index", ["exports", "require", "@ember/-internals/environment", "n
     hasPropertyAccessors: true
   };
   Ember.defineProperty = metal.defineProperty;
-  Ember.watchKey = metal.watchKey;
-  Ember.unwatchKey = metal.unwatchKey;
-  Ember.removeChainWatcher = metal.removeChainWatcher;
-  Ember._ChainNode = metal.ChainNode;
-  Ember.finishChains = metal.finishChains;
-  Ember.watchPath = metal.watchPath;
-  Ember.unwatchPath = metal.unwatchPath;
-  Ember.watch = metal.watch;
-  Ember.isWatching = metal.isWatching;
-  Ember.unwatch = metal.unwatch;
   Ember.destroy = _meta.deleteMeta;
   Ember.libraries = metal.libraries;
   Ember.getProperties = metal.getProperties;
