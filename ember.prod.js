@@ -27423,19 +27423,6 @@ enifed("@ember/object/index", ["exports", "@ember/debug", "@ember/polyfills", "@
 });
 enifed("@ember/polyfills/index", ["exports", "@ember/deprecated-features", "@ember/polyfills/lib/merge", "@ember/polyfills/lib/assign", "@ember/polyfills/lib/weak_set"], function (_exports, _deprecatedFeatures, _merge, _assign, _weak_set) {
   "use strict";
-
-  Object.defineProperty(_exports, "assign", {
-    enumerable: true,
-    get: function () {
-      return _assign.default;
-    }
-  });
-  Object.defineProperty(_exports, "assignPolyfill", {
-    enumerable: true,
-    get: function () {
-      return _assign.assign;
-    }
-  });
   Object.defineProperty(_exports, "_WeakSet", {
     enumerable: true,
     get: function () {
@@ -27446,116 +27433,6 @@ enifed("@ember/polyfills/index", ["exports", "@ember/deprecated-features", "@emb
   let merge = _deprecatedFeatures.MERGE ? _merge.default : undefined; // Export `assignPolyfill` for testing
 
   _exports.merge = merge;
-});
-enifed("@ember/polyfills/lib/assign", ["exports"], function (_exports) {
-  "use strict";
-
-  _exports.assign = assign;
-  _exports.default = void 0;
-
-  /**
-   @module @ember/polyfills
-  */
-
-  /**
-    Copy properties from a source object to a target object. Source arguments remain unchanged.
-  
-    ```javascript
-    import { assign } from '@ember/polyfills';
-  
-    var a = { first: 'Yehuda' };
-    var b = { last: 'Katz' };
-    var c = { company: 'Other Company' };
-    var d = { company: 'Tilde Inc.' };
-    assign(a, b, c, d); // a === { first: 'Yehuda', last: 'Katz', company: 'Tilde Inc.' };
-    ```
-  
-    @method assign
-    @for @ember/polyfills
-    @param {Object} target The object to assign into
-    @param {Object} ...args The objects to copy properties from
-    @return {Object}
-    @public
-    @static
-  */
-  function assign(target) {
-    for (let i = 1; i < arguments.length; i++) {
-      let arg = arguments[i];
-
-      if (!arg) {
-        continue;
-      }
-
-      let updates = Object.keys(arg);
-
-      for (let i = 0; i < updates.length; i++) {
-        let prop = updates[i];
-        target[prop] = arg[prop];
-      }
-    }
-
-    return target;
-  } // Note: We use the bracket notation so
-  //       that the babel plugin does not
-  //       transform it.
-  // https://www.npmjs.com/package/babel-plugin-transform-object-assign
-
-
-  const {
-    assign: _assign
-  } = Object;
-
-  var _default = _assign || assign;
-
-  _exports.default = _default;
-});
-enifed("@ember/polyfills/lib/merge", ["exports", "@ember/debug"], function (_exports, _debug) {
-  "use strict";
-
-  _exports.default = merge;
-
-  /**
-    Merge the contents of two objects together into the first object.
-  
-    ```javascript
-    import { merge } from '@ember/polyfills';
-  
-    merge({ first: 'Tom' }, { last: 'Dale' }); // { first: 'Tom', last: 'Dale' }
-    var a = { first: 'Yehuda' };
-    var b = { last: 'Katz' };
-    merge(a, b); // a == { first: 'Yehuda', last: 'Katz' }, b == { last: 'Katz' }
-    ```
-  
-    @method merge
-    @static
-    @for @ember/polyfills
-    @param {Object} original The object to merge into
-    @param {Object} updates The object to copy properties from
-    @return {Object}
-    @deprecated
-    @public
-  */
-  function merge(original, updates) {
-    false && !false && (0, _debug.deprecate)('Use of `merge` has been deprecated. Please use `assign` instead.', false, {
-      id: 'ember-polyfills.deprecate-merge',
-      until: '4.0.0',
-      url: 'https://emberjs.com/deprecations/v3.x/#toc_ember-polyfills-deprecate-merge'
-    });
-
-    if (updates === null || typeof updates !== 'object') {
-      return original;
-    }
-
-    let props = Object.keys(updates);
-    let prop;
-
-    for (let i = 0; i < props.length; i++) {
-      prop = props[i];
-      original[prop] = updates[prop];
-    }
-
-    return original;
-  }
 });
 enifed("@ember/polyfills/lib/weak_set", ["exports"], function (_exports) {
   "use strict";
