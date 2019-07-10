@@ -9739,7 +9739,6 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
 
       this.source = obj;
       this.proto = obj.constructor === undefined ? undefined : obj.constructor.prototype;
-      this._listeners = undefined;
     }
 
     get parent() {
@@ -10068,218 +10067,6 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
         pointer = pointer.parent;
       }
     }
-
-    addToListeners(eventName, target, method, once, sync) {
-      if (false
-      /* DEBUG */
-      ) {
-          counters.addToListenersCalls++;
-        }
-
-      this.pushListener(eventName, target, method, once ? 1
-      /* ONCE */
-      : 0
-      /* ADD */
-      , sync);
-    }
-
-    removeFromListeners(eventName, target, method) {
-      if (false
-      /* DEBUG */
-      ) {
-          counters.removeFromListenersCalls++;
-        }
-
-      this.pushListener(eventName, target, method, 2
-      /* REMOVE */
-      );
-    }
-
-    pushListener(event, target, method, kind, sync = false) {
-      let listeners = this.writableListeners();
-      let i = indexOfListener(listeners, event, target, method); // remove if found listener was inherited
-
-      if (i !== -1 && i < this._inheritedEnd) {
-        listeners.splice(i, 1);
-        this._inheritedEnd--;
-        i = -1;
-      } // if not found, push. Note that we must always push if a listener is not
-      // found, even in the case of a function listener remove, because we may be
-      // attempting to add or remove listeners _before_ flattening has occured.
-
-
-      if (i === -1) {
-        false && !!(this.isPrototypeMeta(this.source) && typeof method === 'function') && (0, _debug.assert)('You cannot add function listeners to prototypes. Convert the listener to a string listener, or add it to the instance instead.', !(this.isPrototypeMeta(this.source) && typeof method === 'function'));
-        false && !!(!this.isPrototypeMeta(this.source) && typeof method === 'function' && kind === 2
-        /* REMOVE */
-        ) && (0, _debug.assert)('You attempted to remove a function listener which did not exist on the instance, which means you may have attempted to remove it before it was added.', !(!this.isPrototypeMeta(this.source) && typeof method === 'function' && kind === 2));
-        listeners.push({
-          event,
-          target,
-          method,
-          kind,
-          sync
-        });
-      } else {
-        let listener = listeners[i]; // If the listener is our own listener and we are trying to remove it, we
-        // want to splice it out entirely so we don't hold onto a reference.
-
-        if (kind === 2
-        /* REMOVE */
-        && listener.kind !== 2
-        /* REMOVE */
-        ) {
-            listeners.splice(i, 1);
-          } else {
-          false && !!(listener.kind === 0
-          /* ADD */
-          && kind === 0
-          /* ADD */
-          && listener.sync !== sync) && (0, _debug.assert)("You attempted to add an observer for the same method on '" + event.split(':')[0] + "' twice to " + target + " as both sync and async. Observers must be either sync or async, they cannot be both. This is likely a mistake, you should either remove the code that added the observer a second time, or update it to always be sync or async. The method was " + method + ".", !(listener.kind === 0 && kind === 0 && listener.sync !== sync)); // update own listener
-
-          listener.kind = kind;
-          listener.sync = sync;
-        }
-      }
-    }
-
-    writableListeners() {
-      // Check if we need to invalidate and reflatten. We need to do this if we
-      // have already flattened (flattened version is the current version) and
-      // we are either writing to a prototype meta OR we have never inherited, and
-      // may have cached the parent's listeners.
-      if (this._flattenedVersion === currentListenerVersion && (this.source === this.proto || this._inheritedEnd === -1)) {
-        if (false
-        /* DEBUG */
-        ) {
-            counters.reopensAfterFlatten++;
-          }
-
-        currentListenerVersion++;
-      } // Inherited end has not been set, then we have never created our own
-      // listeners, but may have cached the parent's
-
-
-      if (this._inheritedEnd === -1) {
-        this._inheritedEnd = 0;
-        this._listeners = [];
-      }
-
-      return this._listeners;
-    }
-    /**
-      Flattening is based on a global revision counter. If the revision has
-      bumped it means that somewhere in a class inheritance chain something has
-      changed, so we need to reflatten everything. This can only happen if:
-         1. A meta has been flattened (listener has been called)
-      2. The meta is a prototype meta with children who have inherited its
-         listeners
-      3. A new listener is subsequently added to the meta (e.g. via `.reopen()`)
-         This is a very rare occurence, so while the counter is global it shouldn't
-      be updated very often in practice.
-    */
-
-
-    flattenedListeners() {
-      if (false
-      /* DEBUG */
-      ) {
-          counters.flattenedListenersCalls++;
-        }
-
-      if (this._flattenedVersion < currentListenerVersion) {
-        if (false
-        /* DEBUG */
-        ) {
-            counters.listenersFlattened++;
-          }
-
-        let parent = this.parent;
-
-        if (parent !== null) {
-          // compute
-          let parentListeners = parent.flattenedListeners();
-
-          if (parentListeners !== undefined) {
-            if (this._listeners === undefined) {
-              // If this instance doesn't have any of its own listeners (writableListeners
-              // has never been called) then we don't need to do any flattening, return
-              // the parent's listeners instead.
-              if (false
-              /* DEBUG */
-              ) {
-                  counters.parentListenersUsed++;
-                }
-
-              this._listeners = parentListeners;
-            } else {
-              let listeners = this._listeners;
-
-              if (this._inheritedEnd > 0) {
-                listeners.splice(0, this._inheritedEnd);
-                this._inheritedEnd = 0;
-              }
-
-              for (let i = 0; i < parentListeners.length; i++) {
-                let listener = parentListeners[i];
-                let index = indexOfListener(listeners, listener.event, listener.target, listener.method);
-
-                if (index === -1) {
-                  if (false
-                  /* DEBUG */
-                  ) {
-                      counters.listenersInherited++;
-                    }
-
-                  listeners.unshift(listener);
-                  this._inheritedEnd++;
-                }
-              }
-            }
-          }
-        }
-
-        this._flattenedVersion = currentListenerVersion;
-      }
-
-      return this._listeners;
-    }
-
-    matchingListeners(eventName) {
-      let listeners = this.flattenedListeners();
-      let result;
-
-      if (false
-      /* DEBUG */
-      ) {
-          counters.matchingListenersCalls++;
-        }
-
-      if (listeners !== undefined) {
-        for (let index = 0; index < listeners.length; index++) {
-          let listener = listeners[index]; // REMOVE listeners are placeholders that tell us not to
-          // inherit, so they never match. Only ADD and ONCE can match.
-
-          if (listener.event === eventName && (listener.kind === 0
-          /* ADD */
-          || listener.kind === 1
-          /* ONCE */
-          )) {
-            if (result === undefined) {
-              // we create this array only after we've found a listener that
-              // matches to avoid allocations when no matches are found.
-              result = [];
-            }
-
-            result.push(listener.target, listener.method, listener.kind === 1
-            /* ONCE */
-            );
-          }
-        }
-      }
-
-      return result;
-    }
   }
 
   _exports.Meta = Meta;
@@ -10460,18 +10247,6 @@ enifed("@ember/-internals/meta/lib/meta", ["exports", "@ember/-internals/utils",
   ) {
       meta._counters = counters;
     }
-
-  function indexOfListener(listeners, event, target, method) {
-    for (let i = listeners.length - 1; i >= 0; i--) {
-      let listener = listeners[i];
-
-      if (listener.event === event && listener.target === target && listener.method === method) {
-        return i;
-      }
-    }
-
-    return -1;
-  }
 });
 enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/-internals/meta", "@ember/debug", "@ember/-internals/utils", "@ember/runloop", "@glimmer/reference", "@ember/-internals/environment", "@ember/error", "ember/version", "@ember/deprecated-features", "@ember/polyfills", "@ember/-internals/owner"], function (_exports, _canaryFeatures, _meta2, _debug, _utils, _runloop, _reference, _environment, _error, _version, _deprecatedFeatures, _polyfills, _owner) {
   "use strict";
@@ -10495,11 +10270,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
   _exports.removeArrayObserver = removeArrayObserver;
   _exports.arrayContentWillChange = arrayContentWillChange;
   _exports.arrayContentDidChange = arrayContentDidChange;
-  _exports.addListener = addListener;
-  _exports.hasListeners = hasListeners;
-  _exports.on = on;
-  _exports.removeListener = removeListener;
-  _exports.sendEvent = sendEvent;
   _exports.isNone = isNone;
   _exports.isEmpty = isEmpty;
   _exports.isBlank = isBlank;
@@ -10786,198 +10556,6 @@ enifed("@ember/-internals/metal", ["exports", "@ember/canary-features", "@ember/
 
   function ensureRunloop() {
     _runloop.backburner.ensureInstance();
-  }
-
-  /**
-  @module @ember/object
-  */
-
-  /*
-    The event system uses a series of nested hashes to store listeners on an
-    object. When a listener is registered, or when an event arrives, these
-    hashes are consulted to determine which target and action pair to invoke.
-  
-    The hashes are stored in the object's meta hash, and look like this:
-  
-        // Object's meta hash
-        {
-          listeners: {       // variable name: `listenerSet`
-            "foo:change": [ // variable name: `actions`
-              target, method, once
-            ]
-          }
-        }
-  
-  */
-
-  /**
-    Add an event listener
-  
-    @method addListener
-    @static
-    @for @ember/object/events
-    @param obj
-    @param {String} eventName
-    @param {Object|Function} target A target object or a function
-    @param {Function|String} method A function or the name of a function to be called on `target`
-    @param {Boolean} once A flag whether a function should only be called once
-    @public
-  */
-
-
-  function addListener(obj, eventName, target, method, once, sync = true) {
-    false && !(Boolean(obj) && Boolean(eventName)) && (0, _debug.assert)('You must pass at least an object and event name to addListener', Boolean(obj) && Boolean(eventName));
-
-    if (!method && 'function' === typeof target) {
-      method = target;
-      target = null;
-    }
-
-    (0, _meta2.meta)(obj).addToListeners(eventName, target, method, once === true, sync);
-  }
-  /**
-    Remove an event listener
-  
-    Arguments should match those passed to `addListener`.
-  
-    @method removeListener
-    @static
-    @for @ember/object/events
-    @param obj
-    @param {String} eventName
-    @param {Object|Function} target A target object or a function
-    @param {Function|String} method A function or the name of a function to be called on `target`
-    @public
-  */
-
-
-  function removeListener(obj, eventName, targetOrFunction, functionOrName) {
-    false && !(Boolean(obj) && Boolean(eventName) && (typeof targetOrFunction === 'function' || typeof targetOrFunction === 'object' && Boolean(functionOrName))) && (0, _debug.assert)('You must pass at least an object, event name, and method or target and method/method name to removeListener', Boolean(obj) && Boolean(eventName) && (typeof targetOrFunction === 'function' || typeof targetOrFunction === 'object' && Boolean(functionOrName)));
-    let target, method;
-
-    if (typeof targetOrFunction === 'object') {
-      target = targetOrFunction;
-      method = functionOrName;
-    } else {
-      target = null;
-      method = targetOrFunction;
-    }
-
-    let m = (0, _meta2.meta)(obj);
-    m.removeFromListeners(eventName, target, method);
-  }
-  /**
-    Send an event. The execution of suspended listeners
-    is skipped, and once listeners are removed. A listener without
-    a target is executed on the passed object. If an array of actions
-    is not passed, the actions stored on the passed object are invoked.
-  
-    @method sendEvent
-    @static
-    @for @ember/object/events
-    @param obj
-    @param {String} eventName
-    @param {Array} params Optional parameters for each listener.
-    @return {Boolean} if the event was delivered to one or more actions
-    @public
-  */
-
-
-  function sendEvent(obj, eventName, params, actions, _meta) {
-    if (actions === undefined) {
-      let meta$$1 = _meta === undefined ? (0, _meta2.peekMeta)(obj) : _meta;
-      actions = typeof meta$$1 === 'object' && meta$$1 !== null ? meta$$1.matchingListeners(eventName) : undefined;
-    }
-
-    if (actions === undefined || actions.length === 0) {
-      return false;
-    }
-
-    for (let i = actions.length - 3; i >= 0; i -= 3) {
-      // looping in reverse for once listeners
-      let target = actions[i];
-      let method = actions[i + 1];
-      let once = actions[i + 2];
-
-      if (!method) {
-        continue;
-      }
-
-      if (once) {
-        removeListener(obj, eventName, target, method);
-      }
-
-      if (!target) {
-        target = obj;
-      }
-
-      if ('string' === typeof method) {
-        method = target[method];
-      }
-
-      method.apply(target, params);
-    }
-
-    return true;
-  }
-  /**
-    @private
-    @method hasListeners
-    @static
-    @for @ember/object/events
-    @param obj
-    @param {String} eventName
-    @return {Boolean} if `obj` has listeners for event `eventName`
-  */
-
-
-  function hasListeners(obj, eventName) {
-    let meta$$1 = (0, _meta2.peekMeta)(obj);
-
-    if (meta$$1 === null) {
-      return false;
-    }
-
-    let matched = meta$$1.matchingListeners(eventName);
-    return matched !== undefined && matched.length > 0;
-  }
-  /**
-    Define a property as a function that should be executed when
-    a specified event or events are triggered.
-  
-    ``` javascript
-    import EmberObject from '@ember/object';
-    import { on } from '@ember/object/evented';
-    import { sendEvent } from '@ember/object/events';
-  
-    let Job = EmberObject.extend({
-      logCompleted: on('completed', function() {
-        console.log('Job completed!');
-      })
-    });
-  
-    let job = Job.create();
-  
-    sendEvent(job, 'completed'); // Logs 'Job completed!'
-   ```
-  
-    @method on
-    @static
-    @for @ember/object/evented
-    @param {String} eventNames*
-    @param {Function} func
-    @return {Function} the listener function, passed as last argument to on(...)
-    @public
-  */
-
-
-  function on(...args) {
-    let func = args.pop();
-    let events = args;
-    false && !(typeof func === 'function') && (0, _debug.assert)('on expects function as last argument', typeof func === 'function');
-    false && !(events.length > 0 && events.every(p => typeof p === 'string' && p.length > 0)) && (0, _debug.assert)('on called without valid event names', events.length > 0 && events.every(p => typeof p === 'string' && p.length > 0));
-    (0, _utils.setListeners)(func, events);
-    return func;
   }
 
   let runInTransaction;
@@ -24493,10 +24071,6 @@ enifed("@ember/-internals/utils", ["exports", "@ember/polyfills", "@ember/debug"
   _exports.guidFor = guidFor;
   _exports.intern = intern;
   _exports.wrap = wrap;
-  _exports.getObservers = getObservers;
-  _exports.getListeners = getListeners;
-  _exports.setObservers = setObservers;
-  _exports.setListeners = setListeners;
   _exports.inspect = inspect;
   _exports.lookupDescriptor = lookupDescriptor;
   _exports.canInvoke = canInvoke;
@@ -46060,10 +45634,6 @@ enifed("ember/index", ["exports", "require", "@ember/-internals/environment", "n
   }, _canaryFeatures.FEATURES);
   Ember._Cache = utils.Cache;
   Ember.on = metal.on;
-  Ember.addListener = metal.addListener;
-  Ember.removeListener = metal.removeListener;
-  Ember.sendEvent = metal.sendEvent;
-  Ember.hasListeners = metal.hasListeners;
   Ember.isNone = metal.isNone;
   Ember.isEmpty = metal.isEmpty;
   Ember.isBlank = metal.isBlank;
