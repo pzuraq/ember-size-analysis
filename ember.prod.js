@@ -15,43 +15,6 @@ var enifed, requireModule, Ember;
 // Used in @ember/-internals/environment/lib/global.js
 mainContext = this; // eslint-disable-line no-undef
 
-enifed("@ember/-internals/error-handling/index", ["exports"], function (_exports) {
-  "use strict";
-
-  _exports.getOnerror = getOnerror;
-  _exports.setOnerror = setOnerror;
-  _exports.getDispatchOverride = getDispatchOverride;
-  _exports.setDispatchOverride = setDispatchOverride;
-  _exports.onErrorTarget = void 0;
-  let onerror;
-  const onErrorTarget = {
-    get onerror() {
-      return onerror;
-    }
-
-  }; // Ember.onerror getter
-
-  _exports.onErrorTarget = onErrorTarget;
-
-  function getOnerror() {
-    return onerror;
-  } // Ember.onerror setter
-
-
-  function setOnerror(handler) {
-    onerror = handler;
-  }
-
-  let dispatchOverride; // allows testing adapter to override dispatch
-
-  function getDispatchOverride() {
-    return dispatchOverride;
-  }
-
-  function setDispatchOverride(handler) {
-    dispatchOverride = handler;
-  }
-});
 enifed("@ember/-internals/utils", ["exports", "@ember/polyfills", "@ember/debug"], function (_exports, _polyfills, _debug) {
   "use strict";
 
@@ -803,27 +766,6 @@ enifed("@ember/-internals/utils", ["exports", "@ember/polyfills", "@ember/debug"
    elsewhere (so they can be lazily evaluated / parsed).
   */
 
-});
-enifed("@ember/error/index", ["exports"], function (_exports) {
-  "use strict";
-
-  _exports.default = void 0;
-
-  /**
-   @module @ember/error
-  */
-
-  /**
-    The JavaScript Error object used by Ember.assert.
-  
-    @class Error
-    @namespace Ember
-    @extends Error
-    @constructor
-    @public
-  */
-  var _default = Error;
-  _exports.default = _default;
 });
 enifed("@ember/instrumentation/index", ["exports", "@ember/-internals/environment", "@ember/canary-features"], function (_exports, _environment, _canaryFeatures) {
   "use strict";
