@@ -1234,49 +1234,6 @@ enifed("@ember/object/index", ["exports", "@ember/debug", "@ember/polyfills", "@
       };
     }
 });
-enifed("@ember/polyfills/index", ["exports", "@ember/deprecated-features", "@ember/polyfills/lib/merge", "@ember/polyfills/lib/assign", "@ember/polyfills/lib/weak_set"], function (_exports, _deprecatedFeatures, _merge, _assign, _weak_set) {
-  "use strict";
-  Object.defineProperty(_exports, "_WeakSet", {
-    enumerable: true,
-    get: function () {
-      return _weak_set.default;
-    }
-  });
-  _exports.merge = void 0;
-  let merge = _deprecatedFeatures.MERGE ? _merge.default : undefined; // Export `assignPolyfill` for testing
-
-  _exports.merge = merge;
-});
-
-enifed("@ember/polyfills/lib/weak_set", ["exports"], function (_exports) {
-  "use strict";
-
-  _exports.default = void 0;
-
-  /* globals WeakSet */
-  var _default = typeof WeakSet === 'function' ? WeakSet : class WeakSetPolyFill {
-    constructor() {
-      this._map = new WeakMap();
-    }
-
-    add(val) {
-      this._map.set(val, true);
-
-      return this;
-    }
-
-    delete(val) {
-      return this._map.delete(val);
-    }
-
-    has(val) {
-      return this._map.has(val);
-    }
-
-  };
-
-  _exports.default = _default;
-});
 enifed("@ember/service/index", ["exports", "@ember/-internals/runtime", "@ember/-internals/metal"], function (_exports, _runtime, _metal) {
   "use strict";
 
