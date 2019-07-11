@@ -7784,27 +7784,7 @@ enifed("@glimmer/wire-format", ["exports"], function (_exports) {
   const isMaybeLocal = is(Opcodes.MaybeLocal);
   _exports.isMaybeLocal = isMaybeLocal;
 });
-enifed("ember/version", ["exports"], function (_exports) {
-  "use strict";
-
-  _exports.default = void 0;
-  var _default = "3.13.0-enable-tracked-properties+42d8229a";
-  _exports.default = _default;
-});
 /*global enifed, module */
-enifed('node-module', ['exports'], function(_exports) {
-  var IS_NODE = typeof module === 'object' && typeof module.require === 'function';
-  if (IS_NODE) {
-    _exports.require = module.require;
-    _exports.module = module;
-    _exports.IS_NODE = IS_NODE;
-  } else {
-    _exports.require = null;
-    _exports.module = null;
-    _exports.IS_NODE = IS_NODE;
-  }
-});
-requireModule('ember')
 
 }());
 //# sourceMappingURL=ember.prod.map
