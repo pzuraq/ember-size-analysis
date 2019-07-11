@@ -1050,22 +1050,6 @@ enifed("@ember/instrumentation/index", ["exports", "@ember/-internals/environmen
     cache = {};
   }
 });
-enifed("@ember/modifier/index", ["exports", "@ember/-internals/glimmer"], function (_exports, _glimmer) {
-  "use strict";
-
-  Object.defineProperty(_exports, "setModifierManager", {
-    enumerable: true,
-    get: function () {
-      return _glimmer.setModifierManager;
-    }
-  });
-  Object.defineProperty(_exports, "capabilties", {
-    enumerable: true,
-    get: function () {
-      return _glimmer.modifierCapabilties;
-    }
-  });
-});
 enifed("@glimmer/encoder", ["exports"], function (_exports) {
   "use strict";
 
